@@ -89,25 +89,25 @@ class TransactionController extends Controller
 
             // The first 1K withdrawal per transaction is free, and the remaining amount will be charged.
 
-            if ($withdrawalAmount <= 1000 ) {
-                $withdrawalFee = 0;
-            } else {
-                $withdrawalFee = ($withdrawalAmount - 1000) * $withdrawalFeeRate;
-            }
+
 
             $monthlyWithdrawals = $user->transactions()
                 ->where('transaction_type', 'withdrawal')
                 ->whereMonth('date', $today->month)
-                ->count();
+                ->sum('amount');
 
-            if ($monthlyWithdrawals < 5) {
-                $remainingFreeWithdrawals = 5 - $monthlyWithdrawals;
-                $remainingFreeWithdrawalAmount = $remainingFreeWithdrawals * 1000;
 
-                if ($withdrawalAmount <= $remainingFreeWithdrawalAmount) {
+            if ($monthlyWithdrawals + $withdrawalAmount <= 5000) {
+                $withdrawalFee = 0;
+            } else {
+
+                if ($withdrawalAmount <= 1000) {
                     $withdrawalFee = 0;
                 } else {
-                    $withdrawalFee = ($withdrawalAmount - $remainingFreeWithdrawalAmount) * $withdrawalFeeRate;
+
+                    if (($monthlyWithdrawals + $withdrawalAmount) > 5000) {
+                        $withdrawalFee = ($monthlyWithdrawals + $withdrawalAmount - 5000 - 1000) * $withdrawalFeeRate;
+                    }
                 }
             }
         }
@@ -123,6 +123,7 @@ class TransactionController extends Controller
                 $withdrawalFee = $withdrawalAmount * $withdrawalFeeRate;
             }
         }
+
 
         // Calculate new balance
         $newBalance = $balance - ($withdrawalAmount + $withdrawalFee);
@@ -140,6 +141,7 @@ class TransactionController extends Controller
             $transaction->fee = $withdrawalFee;
             $transaction->date = now();
             $transaction->save();
+
 
             return response()->json(['message' => 'Withdrawal successful'], 200);
         } else {

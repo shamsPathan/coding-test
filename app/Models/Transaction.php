@@ -15,4 +15,9 @@ class Transaction extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    protected static function newFactory()
+    {
+        return \Database\Factories\TransactionFactory::new();
+    }
 }
